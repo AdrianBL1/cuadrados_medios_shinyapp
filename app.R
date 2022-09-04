@@ -55,17 +55,20 @@ ui <- fluidPage(
     mainPanel(
       h2("Resultados"),
       sidebarPanel(
+        strong("Datos"),
         textOutput("datos"), width = 15
       ),
-      br(),
+      sidebarPanel(
+        strong("Datos ordenados (Menor a Mayor)"),
+        textOutput("datosSort"), width = 15
+      ),
       plotOutput('Hist'),
-      br(),
       br(),
       h3("Pruebas de Estadística para Números Pseudoaleatorios"),
       br(),
       tableOutput("table"),
       br(),
-      plotOutput("histsturgessRender"),
+      plotOutput("histsturgess"),
       br(),
       p("\nIntervalo de aceptacion para la media:\n"),
       tableOutput("media"),
@@ -83,8 +86,8 @@ ui <- fluidPage(
 # Define server logic ----
 server <- function(input, output) {
   
+  #Algoritmo de cuadrados medios
   datos <- reactive({
-    #Algoritmo de cuadrados medios
     
     semilla <- as.integer(input$sem)
     longitud_semilla = nchar(semilla)
@@ -122,10 +125,17 @@ server <- function(input, output) {
     
   })
   
+  #Render datos
   output$datos <- renderText({
     datos()
   })
   
+  #Render datos ordenados
+  output$datosSort <- renderText({
+    sort(datos())
+  })
+  
+  #Histograma del conjunto
   output$Hist <- renderPlot({
     hist(datos(), breaks ="FD", col = 'skyblue', border = 'white',freq = FALSE,
          xlab="Valores del conjunto de datos",
@@ -136,7 +146,7 @@ server <- function(input, output) {
     }
   })
   
-  histsturgess <- reactive({
+  xhist <- reactive({
     #jisq.test.cont(datos(),distribucion = "unif","sturgess",output = TRUE,alpha = 0.05,nparam = 2, 0, 1)
     x = datos()
     distribucion = "unif"
@@ -166,10 +176,11 @@ server <- function(input, output) {
     xhist
   })
   
-  output$histsturgessRender <- renderPlot({
-    histsturgess()
+  output$histsturgess <- renderPlot({
+    xhist()
   })
   
+  #Tabla de Frecuencia
   output$table <- renderTable({
     datos = round(datos(),4)
     n = input$iter
@@ -258,14 +269,13 @@ server <- function(input, output) {
   
   output$jicuadrada <- renderTable({
     x = datos()
-    xhist = histsturgess()
     k=floor(1+3.3*log10(length(x)))
     nparam = c(2, 0, 1)
     
     tol=sqrt(.Machine$double.eps)
     xbreaks=c(min(x)-tol,q,max(x)+tol)
     
-    O=xhist$counts
+    O=xhist()$counts
     E=length(x)/k
     dname=deparse(substitute(x))
     dname=deparse(substitute(x))
@@ -280,10 +290,8 @@ server <- function(input, output) {
     clases=format(xbreaks)
     clases=paste("(",clases[-(k+1)],",",clases[-1],"]",sep="")
     resultados=list(Intervalos=clases,Frecuencia_Observada=O,Frecuencia_Esperada=E,Residuales=(O-E)/sqrt(E))
-    if (output==TRUE){
-      cat("\nTabla de la Distribución Ji-Cuadrada\n")
-      print(as.data.frame(resultados))
-    }
+    cat("\nTabla de la Distribución Ji-Cuadrada\n")
+    print(as.data.frame(resultados))
   })
   
   output$aleatoriedad <- renderPlot({
